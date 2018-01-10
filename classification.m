@@ -1,85 +1,114 @@
+close all;
+
+%% load data
+% read = true;
+if read
+    all_data = import_data('transfusion.data');
+    
+    % 1 => positive
+    % -1 => negative
+    all_data{:,5} = all_data{:,5} .* 2 - 1;
+end
+read=false;
+
+POSITIVE = 1;
+NEGATIVE = -1;
+
 %% preprocessing
-all_data = import_data('transfusion.data');
-samples = all_data{:,1:4};
-theClass = all_data{:,5};
-% 1 => positive
-% -1 => negative
-theClass = theClass .* 2 - 1;
+all_data_positive = all_data{all_data{:,5} == POSITIVE,:};
+all_data_negative = all_data{all_data{:,5} == NEGATIVE,:};
 
-[~,no_sample_grpups] = size(samples);
+all_data_positive_rows = size(all_data_positive,1);
+all_data_negative_rows = size(all_data_negative,1);
 
-% plot(samples(:,1), theClass, 'rx');
-% grid on;
+count = 1;
+step = ceil(all_data_positive_rows / count);
+data_positive = all_data_positive(step:step:all_data_positive_rows,:);
+step = ceil(all_data_negative_rows / count);
+data_negative = all_data_negative(step:step:all_data_negative_rows,:);
+
+data_training = [data_positive;data_negative];
+data_training_rows = size(data_positive,1)+size(data_negative,1);
+X = data_training(:,1:4);
+Y = data_training(:,5);
+% 
+% step = ceil(all_data_positive_rows / count);
+% assert(step > 1);
+% validation_positive = all_data_positive(step-1:step:all_data_positive_rows,:);
+% step = ceil(all_data_negative_rows / count);
+% assert(step > 1);
+% validation_negative = all_data_negative(step-1:step:all_data_negative_rows,:);
 
 %% processing
-%Train the SVM Classifier
-model = fitcsvm(samples,theClass, ...
-    'KernelFunction','my_sigmoid',...
-    'Standardize',true, ...
-    'ClassNames',[-1,1]);
+% Any hyperplane can be written as the set of points vect_x satisfying:
+% w*x-b = 0
 
-% Predict scores over the grid
-no_cells = 10;
-direction(no_cells,no_sample_grpups) = 0;
-for s = 1:no_sample_grpups
-    direction(:,s) = linspace(min(samples(:,s)),...
-                              max(samples(:,s)),...
-                              no_cells);
-end
+% solving
+m = 4;
+n = data_training_rows;
 
-% cartesian product, create grid
-xGrid(no_cells^no_sample_grpups, no_sample_grpups) = 0;
-xGrid_size = no_cells^(no_sample_grpups-1);
-for s = 1:no_sample_grpups
-    for i = 1:2^(s-1)
-        for c = 1:no_cells
-            for g = 1:xGrid_size
-                xGrid(xGrid_size*(no_cells*(i-1)+(c-1))+g,s) = direction(c,s);
-            end
-        end
-    end
-    xGrid_size = xGrid_size/no_cells;
-end
+% z = (x,b,eps)
+H = diag([ones(1,m), 0]);
+% H = diag([ones(1,m), 0, zeros(1,n)]);
+lambda = 0;
+f = [zeros(1,m), 0]';
+% f = [zeros(1,m), 0, lambda*ones(1,n)]';
+p = diag(Y)*X;
+A = -[p -Y];
+% A = -[p Y eye(n)];
+B = -ones(n,1);
+lb = [-inf*ones(m,1); -inf];
+% lb = [-inf*ones(m,1); -inf; zeros(n,1)];
+% x = quadprog(H,f,A,b) minimizes 1/2*x'*H*x + f'*x
+% subject to the restrictions A*x ≤ b. 
+z = quadprog(H,f,A,B,[],[],lb);
+w = z(1:m,:);
+b = z(m+1,:);
+% eps = z(m+2:m+n+1,:);
 
-[~,scores] = predict(model,xGrid);
+% verify
+tmp = Y.*(X*w - ones(data_training_rows,1)*b);
+s=sign(tmp);
+data_positive_rows = size(data_positive,1);
+data_negative_rows = size(data_negative,1);
+is_positive_correct = sum(s(1:data_positive_rows)==1);
+is_negative_correct = sum(s(data_positive_rows+1:data_training_rows)==1);
+
+success_rate_positive = is_positive_correct/data_positive_rows
+success_rate_negative = is_negative_correct/data_negative_rows
+success_rate_total = (is_positive_correct+is_negative_correct)/data_training_rows
 
 % crossvalidation
-CVMdl2 = crossval(model);
-misclass2 = kfoldLoss(CVMdl2);
-misclass2
 
 %% postprocessing
 % 2D
-figure
-gplotmatrix(samples,[],theClass,['r' 'b' 'g' 'c'],[],[],false);
-sample_names = {'Recency'; 'Frequency'; 'Monetary'; 'Time'};
-text(linspace(0.1,0.85,no_sample_grpups), repmat(-.1,1,4), sample_names, 'FontSize',8);
-text(repmat(-.12,1,4), linspace(0.8,0.05,no_sample_grpups), sample_names, 'FontSize',8, 'Rotation',90);
+% figure
+% gplotmatrix(samples,[],theClass,['r' 'b' 'g' 'c'],[],[],false);
+% sample_names = {'Recency'; 'Frequency'; 'Monetary'; 'Time'};
+% text(linspace(0.1,0.85,samples_size_groups), repmat(-.1,1,4), sample_names, 'FontSize',8);
+% text(repmat(-.12,1,4), linspace(0.8,0.05,samples_size_groups), sample_names, 'FontSize',8, 'Rotation',90);
+
 
 % 3D
 figure;
 hold on;
 grid on;
-label = [-1, 1];
-mark = ["rx", "bx"];
-for i = 1:2
-    idx = (theClass == label(i));
-    plot3(samples(idx,1),...
-          samples(idx,2),...
-          samples(idx,4),...
+label = [NEGATIVE,POSITIVE];
+mark = ["bx", "rx"];
+for i = 1:length(label)
+    idx = (Y == label(i));
+    plot3(X(idx,1),...
+          X(idx,3),...
+          X(idx,4),...
           mark(i));
 end
-
-plot3(samples(model.IsSupportVector,1),...
-      samples(model.IsSupportVector,2),...
-      samples(model.IsSupportVector,4),...
-      'ko',...
-      'MarkerSize',10);
-        
-% contour3(x1Grid,x2Grid,x3Grid,...
-%          reshape(scores(:,2),size(x1Grid)),[0 0],'k');
-    
-legend({'-1','1','Support Vectors'},'Location','Best');
-hold off
-
-
+% 
+% coeff(4) = 0;
+% coeff(1) = b/w(1);
+% % coeff(2) = b/w(2);
+% % coeff(3) = b/w(3);
+% coeff(4) = b/w(4);
+% a=diag(coeff);
+% surf(a(1,[1 2 4]),...
+%       a(2,[1 2 4]),...
+%       a(3,[1 2 4]));
