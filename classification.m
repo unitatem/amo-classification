@@ -32,18 +32,14 @@ Y = data_training(:,5);
 % x = quadprog(H,f,A,b) minimizes 1/2*x'*H*x + f'*x
 % subject to the restrictions A*x ≤ b.
 
-options = optimoptions('quadprog',...
-    'Diagnostics','on',...
-    'Display','iter-detailed');
+options.Diagnostics = 'on';
+options.Display = 'iter-detailed';
 
 % solve
-% z = primal_hard_margin(X,Y,options);
-z = primal_soft_margin(X,Y,options);
-
-[X_rows,X_cols] = size(X);
-w = z(1:X_cols,:);
-b = z(X_cols+1,:);
-% eps = z(X_cols+2:X_cols+X_rows+1,:);
+% [w,b,~] = primal_hard_margin(X,Y,options);
+% [w,b,eps] = primal_soft_margin(X,Y,options);
+% [w,b,~] = dual_hard_margin(X,Y,options);
+[w,b,x] = dual_soft_margin(X,Y,options);
 
 % verify
 [success_rate_positive,success_rate_negative,success_rate_total] =...
