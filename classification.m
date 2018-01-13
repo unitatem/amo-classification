@@ -1,7 +1,7 @@
 close all;
 
 %% load data
-read = true;
+% read = true;
 if read
     all_data = import_data('data/transfusion.data');
     
@@ -39,7 +39,8 @@ options.Display = 'iter-detailed';
 % [w,b,~] = primal_hard_margin(X,Y,options);
 % [w,b,eps] = primal_soft_margin(X,Y,options);
 % [w,b,~] = dual_hard_margin(X,Y,options);
-[w,b,x] = dual_soft_margin(X,Y,options);
+% [w,b,x] = dual_soft_margin(X,Y,options);
+[w,b,~] = augmented_lagrange(X,Y,options);
 
 % verify
 [success_rate_positive,success_rate_negative,success_rate_total] =...
