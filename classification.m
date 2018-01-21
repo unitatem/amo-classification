@@ -1,10 +1,10 @@
 close all;
 
 %% load data
-% read = true;
+read = true;
 if read
     all_data = import_data('data/transfusion.data');
-    
+
     %  1 => positive
     % -1 => negative
     all_data{:,5} = all_data{:,5} .* 2 - 1;
@@ -29,8 +29,6 @@ Y = data_training(:,5);
 %% processing
 % Any hyperplane can be written as the set of points x satisfying:
 % w*x-b = 0
-% x = quadprog(H,f,A,b) minimizes 1/2*x'*H*x + f'*x
-% subject to the restrictions A*x ≤ b.
 
 options.Diagnostics = 'on';
 options.Display = 'iter-detailed';
@@ -56,32 +54,23 @@ fprintf("Validation: pos = %.4f neg = %.4f, total = %.4f\n",...
 
 %% postprocessing
 % 2D
-% figure
-% gplotmatrix(samples,[],theClass,['r' 'b' 'g' 'c'],[],[],false);
+% figure(1);
+% gplotmatrix(X,[],Y,['r' 'b' 'g' 'c'],[],[],true);
 % sample_names = {'Recency'; 'Frequency'; 'Monetary'; 'Time'};
-% text(linspace(0.1,0.85,samples_size_groups), repmat(-.1,1,4), sample_names, 'FontSize',8);
-% text(repmat(-.12,1,4), linspace(0.8,0.05,samples_size_groups), sample_names, 'FontSize',8, 'Rotation',90);
+% text(linspace(0.1,0.85,size(X,2)), repmat(-.1,1,4), sample_names, 'FontSize',8);
+% text(repmat(-.12,1,4), linspace(0.8,0.05,size(X,2)), sample_names, 'FontSize',8, 'Rotation',90);
 
 % 3D
-figure;
-hold on;
-grid on;
-label = [data_labels.NEGATIVE,data_labels.POSITIVE];
-mark = ["bx", "rx"];
-for i = 1:length(label)
-    idx = (Y == label(i));
-    plot3(X(idx,1),...
-          X(idx,3),...
-          X(idx,4),...
-          mark(i));
-end
+% figure(2);
+% hold on;
+% grid on;
+% label = [data_labels.NEGATIVE,data_labels.POSITIVE];
+% mark = ["bx", "rx"];
+% for i = 1:length(label)
+%     idx = (Y == label(i));
+%     plot3(X(idx,1),...
+%           X(idx,3),...
+%           X(idx,4),...
+%           mark(i));
+% end
 
-% coeff(4) = 0;
-% coeff(1) = b/w(1);
-% % coeff(2) = b/w(2);
-% % coeff(3) = b/w(3);
-% coeff(4) = b/w(4);
-% a=diag(coeff);
-% surf(a(1,[1 2 4]),...
-%       a(2,[1 2 4]),...
-%       a(3,[1 2 4]));
